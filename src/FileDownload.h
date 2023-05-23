@@ -11,6 +11,13 @@ class FileDownload : public QObject
 {
     Q_OBJECT
 public:
+    enum DownlodStatus
+    {
+        Failed,
+        Success,
+        exist
+    };
+
     struct DownloadInfo 
     {
         QString url;
@@ -49,7 +56,7 @@ public:
     void set_dst_dir(const QString& dstDir);
 
     /// <summary>
-    /// 设置临时目录，用于下载时防止中途失败但文件存在的情况
+    /// 设置临时目录，用于下载时防止中途失败但文件存在的情况，解决如果没有md5检验会打开出错的情况
     /// </summary>
     /// <param name="dir">目标目录</param>
     void set_temp_dir(const QString& dir);
@@ -73,10 +80,15 @@ public:
     void start();
 
     /// <summary>
-    /// 设置同时下载的个数
+    /// 设置同时下载分片的个数
     /// </summary>
     /// <param name="num">个数</param>
     void set_download_num(const int& num);
+
+Q_SIGNALS: 
+    void sig_download_progress(QString url, int progress, QString speed);
+
+    void sig_download_status(QString url, DownlodStatus status);
 
 private Q_SLOTS:
 
@@ -98,13 +110,6 @@ private:
     /// 开始一个新的下载
     /// </summary>
     void add_new_downloader();
-
-    /// <summary>
-    /// 创建目录
-    /// </summary>
-    /// <param name="path"></param>
-    /// <returns></returns>
-    QString create_dir(const QString path);
 
 private:
     // 临时目录
@@ -146,8 +151,10 @@ private:
     // 当前已经分片的个数
     int64_t m_lastSplitNum;
 
+    // 用于计算进度
     QTimer m_progressTimer;
 
+    // 开始下载的时间
     unsigned long long m_startTime;
 
     QMutex m_mutex;

@@ -18,6 +18,8 @@ add_executable(QtControlClass
   "src/main.cpp"
   "src/FileDownload.cpp"
   "src/FileDownload.h"
+  "src/WorkObject.cpp"
+  "src/WorkObject.h"
 )
 target_link_libraries(QtControlClass Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Network)
 

@@ -1,4 +1,5 @@
 #include "FileDownload.h"
+#include "WorkObject.h"
 
 FileDownload::FileDownload(QObject* parent)
     :QObject(parent)
@@ -9,7 +10,7 @@ FileDownload::FileDownload(QObject* parent)
     , m_remainingSize(0)
     , m_lastFile(nullptr)
     , m_lastSplitNum(0)
-    , m_dstDir("")
+    , m_dstDir("./")
     , m_fileTotalSize(0)
     , m_dlSize(0)
 {
@@ -23,23 +24,13 @@ FileDownload::~FileDownload()
 void FileDownload::set_dst_dir(const QString& dstDir)
 {
     m_dstDir = dstDir;
-    m_dstDir.replace("\\", "/");
-    if (!m_dstDir.contains(":"))
-    {
-        if (!(m_dstDir.startsWith("./") || m_dstDir.startsWith("../")))
-        {
-            m_dstDir = "./" + m_dstDir;
-        }
-    }
-    if (!m_dstDir.endsWith("/"))
-    {
-        m_dstDir += "/";
-    }
+    WorkObject::set_path_to_safe(m_dstDir);
 }
 
 void FileDownload::set_temp_dir(const QString& dir)
 {
     m_tmpDir = dir;
+    WorkObject::set_path_to_safe(m_tmpDir);
 }
 
 void FileDownload::set_cover_flag(const bool& flag)
@@ -82,12 +73,26 @@ void FileDownload::start()
     m_lastDlInfo = m_downloadQueue.dequeue();
     m_queueMutex.unlock();
 
+    if (QFile::exists(m_lastDlInfo.dstName) && !m_coverFlag)
+    {
+        Q_EMIT sig_download_status(m_lastDlInfo.url, FileDownload::exist);
+        start();
+        return;
+    }
+
     m_remainingSize = get_file_total_size(m_lastDlInfo.url);
     m_fileTotalSize = m_remainingSize;
 
-    create_dir(m_dstDir);
-    m_lastDlInfo.dstName = m_dstDir + m_lastDlInfo.dstName;
-    fopen_s(&m_lastFile, m_lastDlInfo.dstName.toStdString().c_str(), "wb");
+    WorkObject::create_dir(m_dstDir);
+    if (m_tmpDir.isEmpty())
+    {
+        fopen_s(&m_lastFile, (m_dstDir + m_lastDlInfo.dstName).toStdString().c_str(), "wb");
+    }
+    else
+    {
+        WorkObject::create_dir(m_tmpDir);
+        fopen_s(&m_lastFile, (m_tmpDir + m_lastDlInfo.dstName).toStdString().c_str(), "wb");
+    }
 
     m_lastSplitNum = 0;
 
@@ -132,6 +137,11 @@ void FileDownload::download_finished()
         m_progressTimer.stop();
         qDebug("download %s finished", qPrintable(m_lastDlInfo.url));
         fclose(m_lastFile);
+        if (!m_tmpDir.isEmpty())
+        {
+            QFile::rename(m_tmpDir + m_lastDlInfo.dstName, m_dstDir + m_lastDlInfo.dstName);
+        }
+        Q_EMIT sig_download_status(m_lastDlInfo.url, FileDownload::Success);
         start();
     }
 }
@@ -187,6 +197,7 @@ void FileDownload::progress_timeout()
 
     int progress = 1.0 * m_dlSize / m_fileTotalSize * 100.0;
     qDebug("progress = %d speed = %d %s", progress, speed, qPrintable(unit));
+    Q_EMIT sig_download_progress(m_lastDlInfo.url, progress, QString::number(speed) + " " + unit);
 }
 
 int FileDownload::get_file_total_size(const QString& link)
@@ -237,17 +248,3 @@ void FileDownload::add_new_downloader()
     m_mutex.unlock();
 }
 
-QString FileDownload::create_dir(const QString path)
-{
-    QDir dir(path);
-    if (dir.exists(path))
-    {
-        return path;
-    }
-    QString parentDir = create_dir(path.mid(0, path.lastIndexOf('/')));
-    QString dirname = path.mid(path.lastIndexOf('/') + 1);
-    QDir parentPath(parentDir);
-    if (!dirname.isEmpty())
-        parentPath.mkpath(dirname);
-    return parentDir + "/" + dirname;
-} 
