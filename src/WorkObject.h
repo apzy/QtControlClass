@@ -39,6 +39,8 @@ public:
     /// <param name="path"></param>
     static void set_path_to_safe(QString& path);
 
+    static QString get_mac_address();
+
     static bool find_process(const QString process);
 
     static void run_cmd_show(const QStringList& args);

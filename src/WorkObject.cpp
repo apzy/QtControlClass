@@ -8,6 +8,7 @@
 #include <qnetworkaccessmanager.h>
 #include <qnetwork.h>
 #include <qeventloop.h>
+#include <QtNetwork>
 
 WorkObject::WorkObject()
 {
@@ -156,6 +157,30 @@ void WorkObject::set_path_to_safe(QString& path)
     }
 }
 
+QString WorkObject::get_mac_address()
+{
+    QList<QNetworkInterface> nets = QNetworkInterface::allInterfaces();
+    int nCnt = nets.count();
+    QString strMacAddr = "";
+    for (int i = 0; i < nCnt; i++)
+    {
+        if (nets[i].flags().testFlag(QNetworkInterface::IsUp) &&
+            nets[i].flags().testFlag(QNetworkInterface::IsRunning)
+            && !nets[i].flags().testFlag(QNetworkInterface::IsLoopBack))
+        {
+            for (int j = 0; j < nets[i].addressEntries().size(); j++)
+            {
+                if (nets[i].addressEntries().at(j).ip() != QHostAddress::LocalHost &&
+                    nets[i].addressEntries().at(j).ip().protocol() == QAbstractSocket::IPv4Protocol)
+                {
+                    strMacAddr = nets[i].hardwareAddress();
+                }
+            }
+        }
+    }
+    return strMacAddr;
+}
+
 
 bool WorkObject::find_process(const QString process)
 {
@@ -170,7 +195,11 @@ bool WorkObject::find_process(const QString process)
     BOOL bMore = Process32First(hProcessSnap, &pe32);
     while (bMore)
     {
+#ifdef UNICODE
+        QString exeName = QString::fromWCharArray(pe32.szExeFile);
+#else
         QString exeName = pe32.szExeFile;
+#endif
         if (exeName.contains(process))
         {
             ret = true;
@@ -203,7 +232,7 @@ void WorkObject::run_cmd_show(const QStringList& args)
 
 QProcess* WorkObject::launch_bat(const QString& filePath,const QString& runDir)
 {
-    SetCurrentDirectory(runDir.toStdString().c_str());
+    SetCurrentDirectoryW(runDir.toStdWString().c_str());
     QStringList arguments;
     arguments << "/K";
     arguments << filePath;
