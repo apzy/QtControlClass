@@ -41,18 +41,16 @@ void FileDownload::set_cover_flag(const bool& flag)
 void FileDownload::push_url(const QString& url, const QString& dstName)
 {
     DownloadInfo info;
-    info.url = url;
+    info.url = url.trimmed();
     if (dstName.isEmpty())
     {
-        info.dstName = url.mid(url.lastIndexOf("/") + 1);
+        info.dstName = info.url.mid(info.url.lastIndexOf("/") + 1);
     }
     else
     {
         info.dstName = dstName;
     }
-    m_queueMutex.lock();
     m_downloadQueue.push_back(info);
-    m_queueMutex.unlock();
 }
 
 void FileDownload::start()
@@ -61,6 +59,7 @@ void FileDownload::start()
 
     if (m_downloadQueue.isEmpty())
     {
+        Q_EMIT sig_all_download_finished();
         return;
     }
 
@@ -69,18 +68,23 @@ void FileDownload::start()
         return;
     }
 
-    m_queueMutex.lock();
     m_lastDlInfo = m_downloadQueue.dequeue();
-    m_queueMutex.unlock();
 
-    if (QFile::exists(m_lastDlInfo.dstName) && !m_coverFlag)
+    if (QFile::exists(m_dstDir + m_lastDlInfo.dstName) && !m_coverFlag)
     {
-        Q_EMIT sig_download_status(m_lastDlInfo.url, FileDownload::exist);
+        Q_EMIT sig_download_status(m_lastDlInfo.url, FileDownload::Exist);
         start();
         return;
     }
 
     m_remainingSize = get_file_total_size(m_lastDlInfo.url);
+    if (m_remainingSize <= 0)
+    {
+        Q_EMIT sig_download_status(m_lastDlInfo.url, FileDownload::ErrorUrl);
+        start();
+        return;
+    }
+
     m_fileTotalSize = m_remainingSize;
 
     WorkObject::create_dir(m_dstDir);
@@ -118,11 +122,9 @@ void FileDownload::download_finished()
     {
         if (info.reply == reply)
         {
-            m_mutex.lock();
             info.reply->close();
             info.manager->destroyed();
             m_splitVector.remove(i);
-            m_mutex.unlock();
             break;
         }
         ++i;
@@ -150,7 +152,6 @@ void FileDownload::download_ready_read()
 {
     QNetworkReply* reply = (QNetworkReply*)sender();
     QByteArray data = reply->readAll();
-    m_mutex.lock();
     for (SplitInfo& info : m_splitVector)
     {
         if (info.reply == reply)
@@ -166,7 +167,6 @@ void FileDownload::download_ready_read()
             break;
         }
     }
-    m_mutex.unlock();
 }
 
 void FileDownload::progress_timeout()
@@ -243,8 +243,6 @@ void FileDownload::add_new_downloader()
     info.reply = reply;
     info.manager = manager;
 
-    m_mutex.lock();
     m_splitVector.push_back(info);
-    m_mutex.unlock();
 }
 

@@ -15,7 +15,8 @@ public:
     {
         Failed,
         Success,
-        exist
+        Exist,
+        ErrorUrl
     };
 
     struct DownloadInfo 
@@ -90,6 +91,8 @@ Q_SIGNALS:
 
     void sig_download_status(QString url, DownlodStatus status);
 
+    void sig_all_download_finished();
+
 private Q_SLOTS:
 
     void download_finished();
@@ -156,10 +159,6 @@ private:
 
     // 开始下载的时间
     unsigned long long m_startTime;
-
-    QMutex m_mutex;
-
-    QMutex m_queueMutex;
 
 };
 
