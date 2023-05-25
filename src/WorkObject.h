@@ -43,7 +43,9 @@ public:
 
     static bool find_process(const QString process);
 
-    static void run_cmd_show(const QStringList& args);
+    static QString run_cmd_noconsole(const QStringList& args);
+
+    static QString run_cmd_show(const QStringList& args);
 
     static QProcess* launch_bat(const QString& filePath, const QString& runDir = "./");
 

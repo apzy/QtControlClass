@@ -211,7 +211,18 @@ bool WorkObject::find_process(const QString process)
     return ret;
 }
 
-void WorkObject::run_cmd_show(const QStringList& args)
+QString WorkObject::run_cmd_noconsole(const QStringList& args)
+{
+    QProcess p;
+    p.start("cmd.exe", args);
+    p.waitForStarted();
+    p.waitForFinished(-1);
+    QString info = QString::fromLocal8Bit(p.readAllStandardOutput());
+    p.close();
+    return info;
+}
+
+QString WorkObject::run_cmd_show(const QStringList& args)
 {
     QProcess p;
     QString program = "C:/Windows/System32/cmd.exe";
@@ -227,7 +238,9 @@ void WorkObject::run_cmd_show(const QStringList& args)
 
     p.waitForStarted();
     p.waitForFinished(-1);
+    QString info = QString::fromLocal8Bit(p.readAllStandardOutput());
     p.close();
+    return info;
 }
 
 QProcess* WorkObject::launch_bat(const QString& filePath,const QString& runDir)
