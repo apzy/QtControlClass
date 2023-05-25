@@ -200,7 +200,7 @@ void FileDownload::progress_timeout()
     Q_EMIT sig_download_progress(m_lastDlInfo.url, progress, QString::number(speed) + " " + unit);
 }
 
-int FileDownload::get_file_total_size(const QString& link)
+int64_t FileDownload::get_file_total_size(const QString& link)
 {
     QUrl url(link);
     QNetworkAccessManager manager;

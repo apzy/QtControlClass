@@ -107,7 +107,7 @@ private:
     /// </summary>
     /// <param name="link">文件链接</param>
     /// <returns>文件大小</returns>
-    int get_file_total_size(const QString& link);
+    int64_t get_file_total_size(const QString& link);
 
     /// <summary>
     /// 开始一个新的下载
@@ -125,7 +125,7 @@ private:
     int m_downloadNum;
 
     // 分片大小
-    int m_minSize;
+    int64_t m_minSize;
 
     // 下载队列
     QQueue<DownloadInfo> m_downloadQueue;
