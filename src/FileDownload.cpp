@@ -55,6 +55,7 @@ void FileDownload::push_url(const QString& url, const QString& dstName)
 
 void FileDownload::start()
 {
+    m_lastSplitNum = 0;
     m_dlSize = 0;
 
     if (m_downloadQueue.isEmpty())
@@ -76,6 +77,7 @@ void FileDownload::start()
         start();
         return;
     }
+    QFile::remove(m_dstDir + m_lastDlInfo.dstName);
 
     m_remainingSize = get_file_total_size(m_lastDlInfo.url);
     if (m_remainingSize <= 0)
@@ -97,8 +99,6 @@ void FileDownload::start()
         WorkObject::create_dir(m_tmpDir);
         fopen_s(&m_lastFile, (m_tmpDir + m_lastDlInfo.dstName).toStdString().c_str(), "wb");
     }
-
-    m_lastSplitNum = 0;
 
     m_startTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     m_progressTimer.start();
@@ -157,7 +157,7 @@ void FileDownload::download_ready_read()
         if (info.reply == reply)
         {
             m_dlSize += data.size();
-            fseek(m_lastFile, info.start + info.writePos, SEEK_SET);
+            _fseeki64(m_lastFile, info.start + info.writePos, SEEK_SET);
             fwrite(data.data(), sizeof(char), data.size(), m_lastFile);
             info.writePos += data.size();
             if (info.writePos > info.size)
